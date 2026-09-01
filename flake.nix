@@ -81,6 +81,7 @@
                 cmake
                 ninja
                 gcc
+                wget
               ])
               ++ [ self.formatter.${system} ];
           };

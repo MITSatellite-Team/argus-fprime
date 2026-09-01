@@ -16,7 +16,8 @@ add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/Top/")
 # Add custom components to this specific deployment here
 # add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/MyComponent/")
 
-register_fprime_deployment(
+register_fprime_zephyr_deployment(
+        ${FPRIME_CURRENT_MODULE}
     SOURCES
         "${CMAKE_CURRENT_LIST_DIR}/Main.cpp"
     DEPENDS

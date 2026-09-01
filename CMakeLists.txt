@@ -4,6 +4,9 @@
 ####
 
 cmake_minimum_required(VERSION 3.24.2)
+if (NOT BUILD_TESTING)
+    find_package(Zephyr HINTS "${CMAKE_CURRENT_LIST_DIR}/lib/zephyr-workspace")
+endif()
 project(HiNamespace C CXX)
 
 ###
