@@ -11,6 +11,10 @@
 // Necessary project-specified types
 #include <Fw/Types/MallocAllocator.hpp>
 
+// Zephyr devicetree access for the UART used by comDriver
+#include <zephyr/device.h>
+#include <zephyr/devicetree.h>
+
 // Public functions for use in main program are namespaced with deployment module HiNamespace
 // This is also the namespace where the topology components are instantiated by FPP.
 namespace HiNamespace {
@@ -23,13 +27,16 @@ Svc::RateGroupDriver::DividerSet rateGroupDivisorsSet{{{1, 0}, {2, 0}, {4, 0}}};
 
 // Rate groups may supply a context token to each of the attached children whose purpose is set by the project. The
 // reference topology sets each token to zero as these contexts are unused in this project.
-U32 rateGroup1Context[Svc::ActiveRateGroup::CONNECTION_COUNT_MAX] = {};
-U32 rateGroup2Context[Svc::ActiveRateGroup::CONNECTION_COUNT_MAX] = {};
-U32 rateGroup3Context[Svc::ActiveRateGroup::CONNECTION_COUNT_MAX] = {};
+Svc::ActiveRateGroup::ContextArray rateGroup1Context(0);
+Svc::ActiveRateGroup::ContextArray rateGroup2Context(0);
+Svc::ActiveRateGroup::ContextArray rateGroup3Context(0);
 
 enum TopologyConstants {
-    COMM_PRIORITY = 34,
+    COMM_BAUD_RATE = 115200,
 };
+
+// Set false by stopRateGroups() to end the startRateGroups() loop
+static volatile bool s_cycling = true;
 
 /**
  * \brief configure/setup components in project-specific way
@@ -43,12 +50,15 @@ void configureTopology() {
     rateGroupDriver.configure(rateGroupDivisorsSet);
 
     // Rate groups require context arrays.
-    rateGroup1.configure(rateGroup1Context, FW_NUM_ARRAY_ELEMENTS(rateGroup1Context));
-    rateGroup2.configure(rateGroup2Context, FW_NUM_ARRAY_ELEMENTS(rateGroup2Context));
-    rateGroup3.configure(rateGroup3Context, FW_NUM_ARRAY_ELEMENTS(rateGroup3Context));
+    rateGroup1.configure(rateGroup1Context);
+    rateGroup2.configure(rateGroup2Context);
+    rateGroup3.configure(rateGroup3Context);
 
     // Command sequencer needs to allocate memory to hold contents of command sequences
     cmdSeq.allocateBuffer(0, mallocator, 5 * 1024);
+
+    // PrmDb file name must be supplied by the using topology
+    FileHandling::prmDb.configure("PrmDb.dat");
 }
 
 void setupTopology(const TopologyState& state) {
@@ -62,43 +72,40 @@ void setupTopology(const TopologyState& state) {
     regCommands();
     // Autocoded configuration. Function provided by autocoder.
     configComponents(state);
-    if (state.hostname != nullptr && state.port != 0) {
-        comDriver.configure(state.hostname, state.port);
-    }
+    // UART for ground communication. Uses the devicetree's chosen console (USB CDC-ACM on the Pico 2 stand-in).
+    // Must run after connectComponents() since configure() signals readiness on the `ready` port.
+    comDriver.configure(DEVICE_DT_GET(DT_CHOSEN(zephyr_console)), COMM_BAUD_RATE);
     // Project-specific component configuration. Function provided above. May be inlined, if desired.
     configureTopology();
+    // Autocoded parameter read from file. Function provided by autocoder.
+    readParameters();
     // Autocoded parameter loading. Function provided by autocoder.
     loadParameters();
     // Autocoded task kick-off (active components). Function provided by autocoder.
     startTasks(state);
-    // Initialize socket communication if and only if there is a valid specification
-    if (state.hostname != nullptr && state.port != 0) {
-        Os::TaskString name("ReceiveTask");
-        // Uplink is configured for receive so a socket task is started
-        comDriver.start(name, COMM_PRIORITY, Default::STACK_SIZE);
-    }
 }
 
 void startRateGroups(const Fw::TimeInterval& interval) {
     // The timer component drives the fundamental tick rate of the system.
     // Svc::RateGroupDriver will divide this down to the slower rate groups.
+    // Each cycle() call blocks until the next timer expiry, then emits one tick.
     // This call will block until the stopRateGroups() call is made.
-    // For this Linux demo, that call is made from a signal handler.
-    timer.startTimer(interval);
+    timer.configure(interval.getSeconds() * 1000 + interval.getUSeconds() / 1000);
+    timer.start();
+    while (s_cycling) {
+        timer.cycle();
+    }
+    timer.stop();
 }
 
 void stopRateGroups() {
-    timer.quit();
+    s_cycling = false;
 }
 
 void teardownTopology(const TopologyState& state) {
     // Autocoded (active component) task clean-up. Functions provided by topology autocoder.
     stopTasks(state);
     freeThreads(state);
-
-    // Other task clean-up.
-    comDriver.stop();
-    (void)comDriver.join();
 
     // Resource deallocation
     cmdSeq.deallocateBuffer(mallocator);

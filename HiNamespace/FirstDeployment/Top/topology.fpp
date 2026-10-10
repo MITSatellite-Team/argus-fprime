@@ -10,7 +10,7 @@ module HiNamespace {
     rateGroup3
   }
 
-  topology FirstDeployment {
+  deployment topology FirstDeployment {
 
   # ----------------------------------------------------------------------
   # Subtopology imports
@@ -23,7 +23,7 @@ module HiNamespace {
   # ----------------------------------------------------------------------
   # Instances used in the topology
   # ----------------------------------------------------------------------
-    instance chronoTime
+    instance zephyrTime
     instance rateGroup1
     instance rateGroup2
     instance rateGroup3
@@ -44,7 +44,7 @@ module HiNamespace {
     text event connections instance CdhCore.textLogger
     health connections instance CdhCore.$health
     param connections instance FileHandling.prmDb
-    time connections instance chronoTime
+    time connections instance zephyrTime
 
   # ----------------------------------------------------------------------
   # Telemetry packets (only used when TlmPacketizer is used)
@@ -108,6 +108,8 @@ module HiNamespace {
       rateGroup1.RateGroupMemberOut[2] -> systemResources.run
       rateGroup1.RateGroupMemberOut[3] -> ComCcsds.comQueue.run
       rateGroup1.RateGroupMemberOut[4] -> ComCcsds.aggregator.timeout
+      rateGroup1.RateGroupMemberOut[5] -> comDriver.schedIn
+      rateGroup1.RateGroupMemberOut[6] -> CdhCore.cmdDisp.run
 
       # Rate group 2
       rateGroupDriver.CycleOut[Ports_RateGroups.rateGroup2] -> rateGroup2.CycleIn
