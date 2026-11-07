@@ -1,0 +1,10 @@
+# Based on Zephyr's rpi_pico2 board
+# Copyright (c) 2024 Andrew Featherstone
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_ARGUS
+
+config USB_SELF_POWERED
+	default n
+
+endif # BOARD_ARGUS

@@ -1,0 +1,5 @@
+board:
+  name: argus
+  full_name: ARGUS
+  socs:
+    - name: rp2350b

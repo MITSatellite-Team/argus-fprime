@@ -1,0 +1,7 @@
+# Based on Zephyr's rpi_pico2 board
+# Copyright (c) 2024 Andrew Featherstone
+# Copyright (c) 2025 Magpie Embedded
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_ARGUS
+	select SOC_RP2350B_M33 if BOARD_ARGUS_RP2350B_M33

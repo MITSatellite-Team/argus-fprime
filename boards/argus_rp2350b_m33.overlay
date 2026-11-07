@@ -1,0 +1,22 @@
+/*
+ * Application overlay for argus/rp2350b/m33 (picked up automatically by Zephyr
+ * from <app>/boards/<board>.overlay). Mirrors fprime-zephyr's
+ * sample-config/boards/rpi_pico2_rp2350a_m33.overlay.
+ *
+ * Without a zephyr,cdc-acm-uart node, Kconfig silently drops
+ * CONFIG_USBD_CDC_ACM_CLASS and CONFIG_CDC_ACM_SERIAL_*_AT_BOOT from prj.conf,
+ * so the board never enumerates over USB.
+ */
+
+&zephyr_udc0 {
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};
+
+/ {
+	chosen {
+		/* F Prime's comDriver and the Zephyr console both use the chosen console. */
+		zephyr,console = &cdc_acm_uart0;
+	};
+};
